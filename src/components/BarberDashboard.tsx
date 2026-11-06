@@ -135,12 +135,12 @@ export default function BarberDashboard() {
 
   // List of waitlist for active barber
   const activeBarberQueue = queue.filter(
-    (q) => q.barberId === selectedBarber.id && q.status === 'waiting'
+    (q) => q.barberId === selectedBarber?.id && q.status === 'waiting'
   );
 
   // Active client currently in seat
   const currentActiveClient = queue.find(
-    (q) => q.barberId === selectedBarber.id && q.status === 'active'
+    (q) => q.barberId === selectedBarber?.id && q.status === 'active'
   );
 
   // Count-up timer of current active client
@@ -365,6 +365,23 @@ export default function BarberDashboard() {
             exit={{ opacity: 0, y: -10 }}
             className="space-y-4"
           >
+            {barbers.length === 0 ? (
+              <div className="bg-neutral-900 border border-neutral-800 rounded-2xl p-8 text-center">
+                <Scissors className="w-8 h-8 text-neutral-600 mx-auto mb-3" />
+                <h3 className="text-sm font-bold text-white">Aucun barbier configuré</h3>
+                <p className="text-xs text-neutral-500 mt-1 max-w-[260px] mx-auto">
+                  Ajoutez votre premier coiffeur dans l'onglet Profil & QR Code pour commencer à gérer la file.
+                </p>
+                <button
+                  onClick={() => setActiveTab('settings')}
+                  className="mt-4 bg-white text-neutral-950 text-xs font-bold py-2.5 px-4 rounded-xl hover:bg-neutral-200 transition-colors inline-flex items-center gap-1.5 cursor-pointer"
+                >
+                  <Settings className="w-3.5 h-3.5" />
+                  Configurer un barbier
+                </button>
+              </div>
+            ) : (
+              <>
             {/* Barber Selector top panel */}
             <div className="bg-neutral-900 border border-neutral-800 rounded-2xl p-4">
               <label className="block text-[10px] font-bold text-neutral-400 uppercase tracking-widest mb-2.5">
@@ -392,21 +409,21 @@ export default function BarberDashboard() {
               <div>
                 <p className="text-[11px] text-neutral-500 font-medium">Bonjour,</p>
                 <h3 className="text-base font-bold text-white tracking-tight flex items-center gap-1">
-                  {selectedBarber.name} ✂️
+                  {selectedBarber?.name} ✂️
                 </h3>
               </div>
 
               {/* Status indicator button */}
               <button
-                onClick={() => toggleBarberStatus(selectedBarber.id)}
+                onClick={() => selectedBarber && toggleBarberStatus(selectedBarber.id)}
                 className={`px-3 py-1.5 rounded-full text-xs font-semibold flex items-center gap-1.5 transition-all outline-none ${
-                  selectedBarber.status === 'online'
+                  selectedBarber?.status === 'online'
                     ? 'bg-green-500/10 text-green-400 border border-green-500/20'
                     : 'bg-neutral-850 text-neutral-500 border border-neutral-750'
                 }`}
               >
-                <span className={`w-2 h-2 rounded-full ${selectedBarber.status === 'online' ? 'bg-green-400 animate-pulse' : 'bg-neutral-500'}`}></span>
-                {selectedBarber.status === 'online' ? 'Disponible' : 'Absent'}
+                <span className={`w-2 h-2 rounded-full ${selectedBarber?.status === 'online' ? 'bg-green-400 animate-pulse' : 'bg-neutral-500'}`}></span>
+                {selectedBarber?.status === 'online' ? 'Disponible' : 'Absent'}
               </button>
             </div>
 
@@ -511,7 +528,7 @@ export default function BarberDashboard() {
                   File d'Attente ({activeBarberQueue.length})
                 </p>
                 <span className="text-[10px] text-green-400 bg-neutral-950 px-2.5 py-1 rounded-lg border border-neutral-850 font-medium">
-                  {selectedBarber.name}
+                  {selectedBarber?.name}
                 </span>
               </div>
 
@@ -542,7 +559,7 @@ export default function BarberDashboard() {
                       <div className="text-right flex items-center gap-1.5 shrink-0">
                         <div className="text-right">
                           <p className="text-[11px] text-neutral-400 font-mono">
-                            ~{(index + 1) * selectedBarber.avgTime}m
+                            ~{(index + 1) * (selectedBarber?.avgTime ?? 0)}m
                           </p>
                           <p className="text-[9px] text-neutral-600 font-bold">
                             {formatFCFA(item.price)}
@@ -566,6 +583,8 @@ export default function BarberDashboard() {
                 )}
               </div>
             </div>
+              </>
+            )}
           </motion.div>
         ) : (
           /* CONFIGURATION TAB & QR CODE VIEW */

@@ -5,7 +5,6 @@
 
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { Barber, Service, QueueItem, Transaction, WeeklyChartData } from '../types';
-import { INITIAL_BARBERS, INITIAL_SERVICES, getSeededData, getEstimatedWaitTime } from '../utils';
 import {
   supabase,
   dbSaveShopName,
@@ -91,26 +90,22 @@ export function BarberProvider({ children }: { children: ReactNode }) {
 
   const [barbers, setBarbers] = useState<Barber[]>(() => {
     const saved = localStorage.getItem('barberq_barbers');
-    return saved ? JSON.parse(saved) : INITIAL_BARBERS;
+    return saved ? JSON.parse(saved) : [];
   });
 
   const [services, setServices] = useState<Service[]>(() => {
     const saved = localStorage.getItem('barberq_services');
-    return saved ? JSON.parse(saved) : INITIAL_SERVICES;
+    return saved ? JSON.parse(saved) : [];
   });
 
   const [queue, setQueue] = useState<QueueItem[]>(() => {
     const saved = localStorage.getItem('barberq_queue');
-    if (saved) return JSON.parse(saved);
-    const seeded = getSeededData();
-    return seeded.queue;
+    return saved ? JSON.parse(saved) : [];
   });
 
   const [transactions, setTransactions] = useState<Transaction[]>(() => {
     const saved = localStorage.getItem('barberq_transactions');
-    if (saved) return JSON.parse(saved);
-    const seeded = getSeededData();
-    return seeded.transactions;
+    return saved ? JSON.parse(saved) : [];
   });
 
   // UI state
@@ -150,6 +145,27 @@ export function BarberProvider({ children }: { children: ReactNode }) {
     localStorage.setItem('barberq_shop_is_open', open ? "true" : "false");
     dbSaveShopSetting('shop_is_open', open ? "true" : "false");
   };
+
+  // One-shot local schema migration
+  useEffect(() => {
+    const schemaVersion = localStorage.getItem('barberq_schema_version');
+    if (!schemaVersion || schemaVersion < '3') {
+      localStorage.removeItem('barberq_barbers');
+      localStorage.removeItem('barberq_services');
+      localStorage.removeItem('barberq_queue');
+      localStorage.removeItem('barberq_transactions');
+      localStorage.removeItem('barberq_active_ticket_id');
+      localStorage.removeItem('barberq_outbox');
+      localStorage.setItem('barberq_schema_version', '3');
+      console.info('[Migration] Local data reset to v3');
+
+      setBarbers([]);
+      setServices([]);
+      setQueue([]);
+      setTransactions([]);
+      setClientActiveTicketId(null);
+    }
+  }, []);
 
   // Synchronize initial data from Supabase if configured
   useEffect(() => {
@@ -207,10 +223,50 @@ export function BarberProvider({ children }: { children: ReactNode }) {
               if (exists) {
                 return prev.map((item) => (item.id === newItem.id ? newItem : item));
               }
-              return [...prev, newItem];
+              const newJoinedAt = new Date(newItem.joinedAt).getTime();
+              const insertIndex = prev.findIndex(
+                (item) => new Date(item.joinedAt).getTime() > newJoinedAt
+              );
+              if (insertIndex === -1) {
+                return [...prev, newItem];
+              }
+              return [...prev.slice(0, insertIndex), newItem, ...prev.slice(insertIndex)];
             });
           } else if (payload.eventType === 'DELETE') {
             setQueue((prev) => prev.filter((item) => item.id !== payload.old.id));
+          }
+        }
+      )
+      .subscribe();
+
+    const transactionsChannel = supabase
+      .channel('transactions_realtime')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'transactions' },
+        (payload) => {
+          if (payload.eventType === 'INSERT' || payload.eventType === 'UPDATE') {
+            const newTransaction: Transaction = {
+              id: payload.new.id,
+              clientName: payload.new.client_name,
+              serviceName: payload.new.service_name,
+              amount: Number(payload.new.price),
+              timestamp: payload.new.timestamp,
+              barberName: payload.new.barber_name,
+              barberId: payload.new.barber_id,
+              status: 'paid' as const,
+            };
+            setTransactions((prev) => {
+              const exists = prev.some((tx) => tx.id === newTransaction.id);
+              const next = exists
+                ? prev.map((tx) => (tx.id === newTransaction.id ? newTransaction : tx))
+                : [...prev, newTransaction];
+              return next.sort(
+                (a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
+              );
+            });
+          } else if (payload.eventType === 'DELETE') {
+            setTransactions((prev) => prev.filter((tx) => tx.id !== payload.old.id));
           }
         }
       )
@@ -289,6 +345,7 @@ export function BarberProvider({ children }: { children: ReactNode }) {
 
     return () => {
       supabase.removeChannel(queueChannel);
+      supabase.removeChannel(transactionsChannel);
       supabase.removeChannel(barbersChannel);
       supabase.removeChannel(servicesChannel);
       supabase.removeChannel(settingsChannel);
@@ -477,13 +534,13 @@ export function BarberProvider({ children }: { children: ReactNode }) {
     localStorage.removeItem('barberq_queue');
     localStorage.removeItem('barberq_transactions');
     localStorage.removeItem('barberq_active_ticket_id');
+    localStorage.removeItem('barberq_outbox');
     
     setShopNameState("King's Barbershop");
-    setBarbers(INITIAL_BARBERS);
-    setServices(INITIAL_SERVICES);
-    const seeded = getSeededData();
-    setQueue(seeded.queue);
-    setTransactions(seeded.transactions);
+    setBarbers([]);
+    setServices([]);
+    setQueue([]);
+    setTransactions([]);
     setClientActiveTicketId(null);
     dbResetAll();
   };
@@ -570,8 +627,8 @@ export function BarberProvider({ children }: { children: ReactNode }) {
     const daysFrench = ['Dim', 'Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam'];
     
     // Group transactions by day of the week
-    const now = new Date('2026-05-22T00:24:55Z'); // Anchor date
-    const dayOfWeekToday = now.getDay(); // 5 for Friday
+    const now = new Date(); // Current date
+    const dayOfWeekToday = now.getDay();
     
     // Initialize results matching weekly graph layout (Monday to Sunday)
     // French: Lun = 1, Mar = 2, Mer = 3, Jeu = 4, Ven = 5, Sam = 6, Dim = 0

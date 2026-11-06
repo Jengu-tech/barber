@@ -496,30 +496,38 @@ export async function dbFetchAll() {
       category: s.category || undefined
     }));
 
-    const queue: QueueItem[] | undefined = queueRes.data?.map((q: any) => ({
-      id: q.id,
-      clientName: q.client_name,
-      phone: q.phone || undefined,
-      barberId: q.barber_id,
-      serviceId: q.service_id,
-      serviceName: q.service_name,
-      price: Number(q.price),
-      status: q.status,
-      joinedAt: q.joined_at,
-      startedAt: q.started_at || undefined,
-      completedAt: q.completed_at || undefined
-    }));
+    const queue: QueueItem[] | undefined = queueRes.data && queueRes.data.length > 0
+      ? queueRes.data
+          .map((q: any) => ({
+            id: q.id,
+            clientName: q.client_name,
+            phone: q.phone || undefined,
+            barberId: q.barber_id,
+            serviceId: q.service_id,
+            serviceName: q.service_name,
+            price: Number(q.price),
+            status: q.status,
+            joinedAt: q.joined_at,
+            startedAt: q.started_at || undefined,
+            completedAt: q.completed_at || undefined
+          }))
+          .sort((a, b) => new Date(a.joinedAt).getTime() - new Date(b.joinedAt).getTime())
+      : undefined;
 
-    const transactions: Transaction[] | undefined = txsRes.data?.map((t: any) => ({
-      id: t.id,
-      clientName: t.client_name,
-      serviceName: t.service_name,
-      amount: Number(t.price),
-      timestamp: t.timestamp,
-      barberName: t.barber_name,
-      barberId: t.barber_id,
-      status: 'paid' as const
-    }));
+    const transactions: Transaction[] | undefined = txsRes.data && txsRes.data.length > 0
+      ? txsRes.data
+          .map((t: any) => ({
+            id: t.id,
+            clientName: t.client_name,
+            serviceName: t.service_name,
+            amount: Number(t.price),
+            timestamp: t.timestamp,
+            barberName: t.barber_name,
+            barberId: t.barber_id,
+            status: 'paid' as const
+          }))
+          .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
+      : undefined;
 
     return {
       shopName,
@@ -541,22 +549,32 @@ export async function dbFetchAll() {
 export async function dbUpsertQueueItem(item: QueueItem) {
   const real = getRealSupabase();
   if (!real) return;
+
+  const payload = {
+    id: item.id,
+    client_name: item.clientName,
+    phone: item.phone || null,
+    barber_id: item.barberId,
+    service_id: item.serviceId,
+    service_name: item.serviceName,
+    price: item.price,
+    status: item.status,
+    joined_at: item.joinedAt,
+    started_at: item.startedAt || null,
+    completed_at: item.completedAt || null
+  };
+
   try {
-    await real.from('queue_items').upsert({
-      id: item.id,
-      client_name: item.clientName,
-      phone: item.phone || null,
-      barber_id: item.barberId,
-      service_id: item.serviceId,
-      service_name: item.serviceName,
-      price: item.price,
-      status: item.status,
-      joined_at: item.joinedAt,
-      started_at: item.startedAt || null,
-      completed_at: item.completedAt || null
-    });
+    const { error } = await real.from('queue_items').upsert(payload);
+    if (error) {
+      console.warn("Error upserting queue item to remote:", error);
+      const { pushOutbox } = await import('./outbox');
+      pushOutbox({ table: 'queue_items', row: payload });
+    }
   } catch (err) {
     console.warn("Error upserting queue item to remote:", err);
+    const { pushOutbox } = await import('./outbox');
+    pushOutbox({ table: 'queue_items', row: payload });
   }
 }
 
@@ -573,18 +591,28 @@ export async function dbDeleteQueueItem(id: string) {
 export async function dbInsertTransaction(tx: Transaction) {
   const real = getRealSupabase();
   if (!real) return;
+
+  const payload = {
+    id: tx.id,
+    client_name: tx.clientName,
+    service_name: tx.serviceName,
+    price: tx.amount,
+    timestamp: tx.timestamp,
+    barber_name: tx.barberName,
+    barber_id: tx.barberId
+  };
+
   try {
-    await real.from('transactions').insert({
-      id: tx.id,
-      client_name: tx.clientName,
-      service_name: tx.serviceName,
-      price: tx.amount,
-      timestamp: tx.timestamp,
-      barber_name: tx.barberName,
-      barber_id: tx.barberId
-    });
+    const { error } = await real.from('transactions').insert(payload);
+    if (error) {
+      console.warn("Error inserting transaction to remote:", error);
+      const { pushOutbox } = await import('./outbox');
+      pushOutbox({ table: 'transactions', row: payload });
+    }
   } catch (err) {
     console.warn("Error inserting transaction to remote:", err);
+    const { pushOutbox } = await import('./outbox');
+    pushOutbox({ table: 'transactions', row: payload });
   }
 }
 

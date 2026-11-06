@@ -13,10 +13,10 @@ export default function AccountingView() {
   const { transactions, queue, getWeeklyRevenues, clearAllData } = useBarber();
   const [activeTab, setActiveTab] = useState<'jour' | 'semaine' | 'mois'>('jour');
 
-  // Anchor date is 2026-05-22
-  const anchorDateStr = '2026-05-22';
+  // Current date (dynamic anchor)
+  const anchorDateStr = new Date().toISOString().split('T')[0];
 
-  // Compute stats for "Today" (based on anchor date)
+  // Compute stats for "Today"
   const todayTransactions = transactions.filter((tx) => {
     return tx.timestamp.startsWith(anchorDateStr);
   });

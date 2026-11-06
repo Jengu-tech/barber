@@ -11,7 +11,8 @@ import AccountingView from './components/AccountingView';
 import HelpGuide from './components/HelpGuide';
 import { BarberLogin, BarberRegister, BarberSetup } from './components/BarberAuth';
 import { supabase } from './lib/supabase';
-import { Scissors, User, DollarSign, Wifi, Battery, Smartphone, Clock, Sparkles, Sun, Moon } from 'lucide-react';
+import { getPendingCount, flushOutbox } from './lib/outbox';
+import { Scissors, User, DollarSign, Wifi, Battery, Smartphone, Clock, Sparkles, Sun, Moon, Cloud, CloudOff } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 
 function AppContent() {
@@ -24,6 +25,7 @@ function AppContent() {
   const [isLight, setIsLight] = useState<boolean>(() => {
     return localStorage.getItem('barberpro_theme') === 'light';
   });
+  const [pendingOps, setPendingOps] = useState<number>(0);
 
   // Sync light/dark theme with document body/root element
   useEffect(() => {
@@ -35,6 +37,28 @@ function AppContent() {
       localStorage.setItem('barberpro_theme', 'dark');
     }
   }, [isLight]);
+
+  useEffect(() => {
+    setPendingOps(getPendingCount());
+    flushOutbox().then(() => setPendingOps(getPendingCount()));
+  }, []);
+
+  useEffect(() => {
+    const handleOnline = () => {
+      flushOutbox().then(() => setPendingOps(getPendingCount()));
+    };
+    const handleOutboxChange = () => {
+      setPendingOps(getPendingCount());
+    };
+
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('barberq_outbox_change', handleOutboxChange);
+
+    return () => {
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('barberq_outbox_change', handleOutboxChange);
+    };
+  }, []);
 
   // Sync Supabase Auth & Local session dynamically
   useEffect(() => {
@@ -176,6 +200,28 @@ function AppContent() {
 
         {/* Header Right Actions */}
         <div className="flex items-center gap-3">
+          <div
+            role="status"
+            title={pendingOps > 0 ? `${pendingOps} opération(s) en attente de synchronisation` : 'Toutes les opérations sont synchronisées'}
+            className={`flex items-center gap-1.5 text-[11px] font-bold px-3 py-1.5 rounded-xl border font-mono shadow-sm transition-colors ${
+              pendingOps > 0
+                ? 'bg-amber-500/10 text-amber-500 border-amber-500/30'
+                : 'bg-neutral-900/60 text-green-500 border-neutral-800'
+            }`}
+          >
+            {pendingOps > 0 ? (
+              <>
+                <CloudOff className="w-3.5 h-3.5 text-amber-500" />
+                <span className="whitespace-nowrap">{pendingOps} en attente</span>
+              </>
+            ) : (
+              <>
+                <Cloud className="w-3.5 h-3.5 text-green-500" />
+                <span className="hidden sm:inline">Synchronisé</span>
+              </>
+            )}
+          </div>
+
           {/* Mode Switch Button */}
           <button
             onClick={() => setIsLight(prev => !prev)}
