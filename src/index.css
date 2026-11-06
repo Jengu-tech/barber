@@ -1,0 +1,95 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap');
+@import "tailwindcss";
+
+:root {
+  /* Default dark theme variables */
+  --neutral-950: #0a0a09;
+  --neutral-900: #111110;
+  --neutral-850: #181817;
+  --neutral-800: #1a1a19;
+  --neutral-700: #404040;
+  --neutral-500: #737373;
+  --neutral-400: #a3a3a3;
+  --neutral-300: #d4d4d4;
+  --neutral-200: #e5e5e5;
+  --neutral-100: #f5f5f5;
+
+  --theme-bg-outer: #0a0a09;
+  --theme-bg-frame: #111110;
+  --theme-bg-header: #1a1a19;
+  --theme-bg-tab-selected: #252524;
+  --theme-border-header: #2a2a29;
+  --theme-border-frame: #222220;
+}
+
+:root.light {
+  /* High contrast refined light theme variables */
+  --neutral-950: #f5f5f3; /* Light grey backdrop */
+  --neutral-900: #ffffff; /* pure white for cards and modules */
+  --neutral-850: #e5e5e5; /* lighter grey outline/separator */
+  --neutral-800: #fcfcfc; /* item background */
+  --neutral-700: #d4d4d8; /* borders / lines */
+  --neutral-500: #71717a; /* readable secondary text */
+  --neutral-400: #404040; /* readable secondary text */
+  --neutral-300: #27272a; /* title text color */
+  --neutral-200: #18181b; /* main text/content body color */
+  --neutral-100: #09090b; /* black text headers */
+
+  --theme-bg-outer: #f4f4f5;
+  --theme-bg-frame: #fcfcfc;
+  --theme-bg-header: #ffffff;
+  --theme-bg-tab-selected: #e5e5e5;
+  --theme-border-header: #d4d4d8;
+  --theme-border-frame: #d4d4d8;
+}
+
+@theme {
+  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
+
+  /* Custom functional theme properties */
+  --color-theme-bg-outer: var(--theme-bg-outer);
+  --color-theme-bg-frame: var(--theme-bg-frame);
+  --color-theme-bg-header: var(--theme-bg-header);
+  --color-theme-bg-tab-selected: var(--theme-bg-tab-selected);
+  --color-theme-border-header: var(--theme-border-header);
+  --color-theme-border-frame: var(--theme-border-frame);
+
+  /* Override tailwind default neutral colors with theme values dynamically */
+  --color-neutral-950: var(--neutral-950);
+  --color-neutral-900: var(--neutral-900);
+  --color-neutral-850: var(--neutral-850);
+  --color-neutral-800: var(--neutral-800);
+  --color-neutral-700: var(--neutral-700);
+  --color-neutral-500: var(--neutral-500);
+  --color-neutral-400: var(--neutral-400);
+  --color-neutral-300: var(--neutral-300);
+  --color-neutral-200: var(--neutral-200);
+  --color-neutral-100: var(--neutral-100);
+}
+
+body {
+  font-family: var(--font-sans);
+  background-color: var(--neutral-950);
+  color: var(--neutral-200);
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Custom fine-grain scrollbar styling */
+::-webkit-scrollbar {
+  width: 5px;
+  height: 5px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--neutral-950);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--neutral-700);
+  border-radius: 99px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--neutral-500);
+}
