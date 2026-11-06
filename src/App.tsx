@@ -12,7 +12,8 @@ import HelpGuide from './components/HelpGuide';
 import { BarberLogin, BarberRegister, BarberSetup } from './components/BarberAuth';
 import { supabase } from './lib/supabase';
 import { getPendingCount, flushOutbox } from './lib/outbox';
-import { Scissors, User, DollarSign, Wifi, Battery, Smartphone, Clock, Sparkles, Sun, Moon, Cloud, CloudOff } from 'lucide-react';
+import { usePWAInstall } from './hooks/usePWAInstall';
+import { Scissors, User, DollarSign, Wifi, Battery, Smartphone, Clock, Sparkles, Sun, Moon, Cloud, CloudOff, Download } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 
 function AppContent() {
@@ -26,6 +27,18 @@ function AppContent() {
     return localStorage.getItem('barberpro_theme') === 'light';
   });
   const [pendingOps, setPendingOps] = useState<number>(0);
+  const { canInstall, isIOS, installApp } = usePWAInstall();
+
+  const handleInstallClick = () => {
+    if (isIOS) {
+      window.alert(
+        "Pour installer l'application sur iOS :\n\n1. Appuyez sur le bouton Partager.\n2. Sélectionnez « Sur l'écran d'accueil ».\n3. Appuyez sur « Ajouter »."
+      );
+      return;
+    }
+
+    void installApp();
+  };
 
   // Sync light/dark theme with document body/root element
   useEffect(() => {
@@ -221,6 +234,18 @@ function AppContent() {
               </>
             )}
           </div>
+
+          {canInstall && (
+            <button
+              onClick={handleInstallClick}
+              className="flex items-center gap-1.5 text-[11px] font-bold px-3 py-1.5 rounded-xl bg-neutral-900 hover:bg-neutral-850 text-neutral-200 border border-neutral-800 hover:border-neutral-700 transition-all cursor-pointer font-mono shadow-sm"
+              aria-label="Installer l'application"
+            >
+              <Download className="w-3.5 h-3.5 text-amber-500" />
+              <span className="hidden sm:inline">Installer l'application</span>
+              <span className="sm:hidden">Installer</span>
+            </button>
+          )}
 
           {/* Mode Switch Button */}
           <button
